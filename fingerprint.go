@@ -10,6 +10,7 @@ type ScanConfig struct {
 	ThreadCount int    // 扫描线程数
 	OutputFile  string // 输出文件
 	ProxyURL    string // 代理URL
+	Silent      bool   // 是否禁用输出
 }
 
 // ScanResult 扫描结果
@@ -26,6 +27,7 @@ func NewScanner(urls []string, config ScanConfig) (*Scanner, error) {
 		ThreadCount: config.ThreadCount,
 		OutputFile:  config.OutputFile,
 		ProxyURL:    config.ProxyURL,
+		Silent:      config.Silent,
 	}
 
 	s, err := core.NewScanner(urls, coreConfig)
@@ -46,6 +48,7 @@ func ScanSingleURL(url string, proxy string) (*ScanResult, error) {
 	config := ScanConfig{
 		ThreadCount: 1,
 		ProxyURL:    proxy,
+		Silent:      true, // 设置为静默模式
 	}
 
 	scanner, err := NewScanner([]string{url}, config)
@@ -58,8 +61,13 @@ func ScanSingleURL(url string, proxy string) (*ScanResult, error) {
 		return nil, err
 	}
 
-	// 返回结果
-	return nil, nil // 这里需要修改返回实际的扫描结果
+	// 返回第一个结果
+	if len(scanner.scanner.Results.All) > 0 {
+		result := scanner.scanner.Results.All[0]
+		return &result, nil
+	}
+
+	return nil, nil
 }
 
 // LoadURLsFromFile 从文件加载URL列表

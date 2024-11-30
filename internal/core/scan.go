@@ -14,7 +14,7 @@ type Scanner struct {
 	urlQueue     *Queue
 	httpClient   *HTTPClient
 	fingerprints *model.FingerprintDB
-	results      *ScanResults
+	Results      *ScanResults
 	workerPool   *ants.Pool
 	wg           sync.WaitGroup
 	config       ScanConfig
@@ -25,6 +25,7 @@ type ScanConfig struct {
 	ThreadCount int
 	OutputFile  string
 	ProxyURL    string
+	Silent      bool // 是否禁用输出
 }
 
 // ScanResults 扫描结果
@@ -50,7 +51,7 @@ func NewScanner(urls []string, config ScanConfig) (*Scanner, error) {
 		urlQueue:     NewQueue(),
 		httpClient:   NewHTTPClient(config.ProxyURL),
 		fingerprints: fingerprints,
-		results:      &ScanResults{},
+		Results:      &ScanResults{},
 		workerPool:   pool,
 		config:       config,
 	}
@@ -82,7 +83,7 @@ func (s *Scanner) Start() error {
 	s.wg.Wait()
 
 	// 输出结果
-	s.outputResults()
+	//s.outputResults()
 	return nil
 }
 
@@ -119,15 +120,18 @@ func (s *Scanner) scanWorker() {
 		}
 
 		// 保存结果
-		s.results.Lock()
-		s.results.All = append(s.results.All, result)
+		s.Results.Lock()
+		s.Results.All = append(s.Results.All, result)
 		if len(cms) > 0 {
-			s.results.Focus = append(s.results.Focus, result)
+			s.Results.Focus = append(s.Results.Focus, result)
 		}
-		s.results.Unlock()
+		s.Results.Unlock()
 
 		// 输出扫描进度
-		s.printProgress(result)
+		// 只有在非静默模式下才打印进度
+		if !s.config.Silent {
+			s.printProgress(result)
+		}
 	}
 }
 
@@ -170,9 +174,9 @@ func (s *Scanner) matchFingerprint(fp model.Fingerprint, resp *model.HTTPRespons
 
 // outputResults 输出扫描结果
 func (s *Scanner) outputResults() {
-	utils.PrintColoredResults(s.results.Focus)
+	utils.PrintColoredResults(s.Results.Focus)
 	if s.config.OutputFile != "" {
-		utils.SaveResults(s.config.OutputFile, s.results.All)
+		utils.SaveResults(s.config.OutputFile, s.Results.All)
 	}
 }
 
